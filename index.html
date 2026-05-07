@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic OS v1 — Abhi's Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #f5f5f5;
+    --bg2:     #ffffff;
+    --bg3:     #f0f0f0;
+    --bg4:     #e8e8e8;
+    --border:  rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text:    #111111;
+    --muted:   #999999;
+    --dim:     #e0e0e0;
+    --soft:    #555555;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --title: 'Bebas Neue', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  #starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .container { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+
+  /* HEADER */
+  .header { text-align: center; margin-bottom: 2rem; }
+  .header-logo { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 0.6rem; }
+  .header-title { font-size: 34px; font-weight: 400; letter-spacing: 0.06em; color: var(--text); font-family: var(--title); line-height: 1; }
+  .header-title span { color: var(--soft); }
+  .header-sub { font-size: 11px; color: var(--muted); margin-top: 0.4rem; font-family: var(--mono); letter-spacing: 0.08em; }
+
+  /* XP PANEL */
+  .xp-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 14px; padding: 1rem 1.3rem; margin-bottom: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .xp-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+  .xp-rank { display: flex; align-items: center; gap: 10px; }
+  .rank-badge {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 3px 10px;
+    font-family: var(--mono); font-size: 10px; color: var(--soft); letter-spacing: 0.1em;
+  }
+  .rank-name { font-size: 15px; font-weight: 500; color: var(--text); font-family: var(--sans); }
+  .xp-number { font-family: var(--mono); font-size: 12px; color: var(--soft); }
+  .xp-bar-bg { height: 4px; background: var(--dim); border-radius: 2px; overflow: hidden; }
+  .xp-bar-fill { height: 4px; border-radius: 2px; background: #111111; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+  .xp-sub { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .xp-bonuses { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .bonus-pill {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--muted); font-family: var(--mono);
+  }
+  .bonus-pill.earned { background: #111; color: #fff; border-color: #111; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin-bottom: 1rem; }
+  .metric { background: var(--bg2); border: 1px solid var(--border2); border-radius: 11px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .metric-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; font-family: var(--mono); }
+  .metric-val { font-size: 20px; font-weight: 500; color: var(--text); font-family: var(--sans); }
+  .metric-val.blue   { color: #333; }
+  .metric-val.green  { color: #444; }
+  .metric-val.yellow { color: #222; }
+  .metric-val.purple { color: #555; }
+
+  /* NAV */
+  .nav { display: flex; gap: 4px; margin-bottom: 1rem; background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .nav-btn {
+    flex: 1; padding: 8px 4px; border-radius: 8px; border: none;
+    background: transparent; font-size: 11px; font-weight: 400;
+    cursor: pointer; color: var(--muted); font-family: var(--sans); transition: all 0.15s;
+  }
+  .nav-btn:hover { color: var(--soft); background: var(--bg3); }
+  .nav-btn.active { background: var(--text); color: #fff; }
+
+  /* WEEK NAV */
+  .week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .week-label { font-family: var(--mono); font-size: 12px; color: var(--soft); letter-spacing: 0.1em; }
+  .week-btn { background: var(--bg2); border: 1px solid var(--border2); border-radius: 7px; padding: 5px 14px; font-size: 12px; cursor: pointer; color: var(--muted); font-family: var(--sans); transition: all 0.15s; }
+  .week-btn:hover { color: var(--text); background: var(--bg3); }
+
+  /* STREAK */
+  .streak-row { display: flex; gap: 5px; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+  .streak-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--border2); display: flex; align-items: center;
+    justify-content: center; font-size: 9px; color: var(--muted);
+    cursor: pointer; flex-shrink: 0; font-family: var(--mono); transition: all 0.15s;
+  }
+  .streak-dot:hover { border-color: #999; color: var(--soft); }
+  .streak-info { font-size: 11px; color: var(--muted); margin-left: 6px; font-family: var(--mono); }
+
+  /* DAY TABS */
+  .day-tabs { display: flex; gap: 5px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .day-tab {
+    padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer;
+    border: 1px solid var(--border); color: var(--muted);
+    background: var(--bg2); font-family: var(--sans); transition: all 0.15s;
+  }
+  .day-tab:hover { color: var(--soft); border-color: var(--border2); }
+  .day-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  /* SYSTEM CARDS */
+  .sys-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .sys-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.2); }
+  .sys-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+  .sys-title { font-size: 11px; font-weight: 500; color: var(--soft); font-family: var(--sans); letter-spacing: 0.01em; }
+  .sys-right { display: flex; align-items: center; gap: 8px; }
+  .sys-xp { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--bg3); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+  .sys-pct { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--soft); }
+  .prog-bg { height: 3px; background: var(--dim); border-radius: 2px; margin-bottom: 12px; }
+  .prog-fill { height: 3px; border-radius: 2px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .tasks { display: flex; flex-direction: column; gap: 9px; }
+  .task-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px 7px; border-radius: 7px; transition: background 0.12s; }
+  .task-row:hover { background: var(--bg3); }
+  .task-row:hover .task-text { color: var(--text); }
+  .task-check {
+    width: 17px; height: 17px; border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.2); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .task-check.done { border-color: transparent; }
+  .task-check svg { display: none; }
+  .task-check.done svg { display: block; }
+  .task-text { font-size: 12px; color: #888; flex: 1; line-height: 1.4; transition: color 0.1s; font-family: var(--sans); }
+  .task-text.done { text-decoration: line-through; color: #ccc; }
+  .task-xp { font-family: var(--mono); font-size: 10px; color: #ccc; white-space: nowrap; }
+  .task-xp.earned { color: var(--soft); }
+  .task-opt { font-size: 10px; color: #ccc; margin-left: 3px; }
+
+  /* TOAST */
+  #xpToast {
+    position: fixed; top: 20px; right: 20px; z-index: 999;
+    background: #111; border: 1px solid #333;
+    border-radius: 8px; padding: 8px 14px;
+    font-family: var(--mono); font-size: 12px; color: #fff;
+    opacity: 0; transform: translateY(-8px);
+    transition: all 0.3s; pointer-events: none;
+  }
+  #xpToast.show { opacity: 1; transform: translateY(0); }
+
+  /* REFLECT */
+  .reflect-area {
+    width: 100%; border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px; font-size: 12px; color: var(--soft);
+    background: var(--bg2); resize: none; font-family: var(--sans);
+    min-height: 60px; margin-top: 10px; transition: border-color 0.15s;
+  }
+  .reflect-area::placeholder { color: #ccc; }
+  .reflect-area:focus { outline: none; border-color: #999; }
+  .sec-label { font-size: 9px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; font-family: var(--mono); }
+  .save-btn {
+    margin-top: 8px; padding: 7px 16px; border-radius: 7px;
+    border: 1px solid var(--border2); background: var(--bg2);
+    font-size: 12px; cursor: pointer; color: var(--muted);
+    font-family: var(--sans); transition: all 0.15s;
+  }
+  .save-btn:hover { color: var(--text); background: var(--bg3); }
+
+  /* CHARTS */
+  .chart-panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .chart-title { font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 1rem; font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar-wrap { width: 100%; display: flex; align-items: flex-end; justify-content: center; flex: 1; }
+  .bar { width: 65%; border-radius: 3px 3px 0 0; transition: height 0.5s cubic-bezier(.4,0,.2,1); min-height: 2px; }
+  .bar-label { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .bar-val { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .chart-legend { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 2px; }
+
+  /* LIBRARY */
+  .filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .filter-btn {
+    padding: 4px 11px; border-radius: 20px; font-size: 11px; cursor: pointer;
+    border: 1px solid var(--border); color: var(--muted);
+    background: var(--bg2); font-family: var(--sans); transition: all 0.15s;
+  }
+  .filter-btn:hover { color: var(--soft); border-color: var(--border2); }
+  .filter-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .subj-section { margin-bottom: 1.3rem; }
+  .subj-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .subj-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .subj-label { font-size: 10px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--mono); }
+  .subj-count { font-size: 10px; color: #ccc; font-family: var(--mono); }
+  .res-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 9px; padding: 9px 12px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; margin-bottom: 5px; transition: all 0.12s;
+  }
+  .res-card:hover { background: var(--bg3); border-color: var(--border2); }
+  .res-card.active-res { border-color: #111; background: var(--bg3); }
+  .res-card.done-res { opacity: 0.35; }
+  .res-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--dim); }
+  .res-name { font-size: 12px; font-weight: 500; color: var(--text); flex: 1; min-width: 0; font-family: var(--sans); }
+  .res-note { font-size: 10px; color: var(--muted); margin-top: 1px; font-family: var(--sans); }
+  .res-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+  .badge { font-size: 10px; padding: 2px 6px; border-radius: 5px; font-family: var(--mono); background: var(--dim); color: var(--muted); }
+  .status-btn {
+    font-size: 10px; padding: 2px 7px; border-radius: 4px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); cursor: pointer; font-family: var(--mono); transition: all 0.12s;
+  }
+  .status-btn.is-active { border-color: #111; color: #111; font-weight: 500; }
+  .status-btn.is-done { border-color: #ddd; color: #ccc; }
+  .pstar { color: var(--soft); font-size: 11px; }
+
+  /* LEVEL UP */
+  #levelUp {
+    position: fixed; inset: 0; z-index: 1000; display: none;
+    align-items: center; justify-content: center; background: rgba(255,255,255,0.85);
+  }
+  #levelUp.show { display: flex; }
+  .level-up-box {
+    background: #fff; border: 1px solid #e0e0e0;
+    border-radius: 16px; padding: 2rem 3rem; text-align: center;
+    animation: popIn 0.4s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+  }
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .level-up-icon { font-size: 36px; margin-bottom: 0.5rem; }
+  .level-up-title { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.2em; margin-bottom: 0.5rem; text-transform: uppercase; }
+  .level-up-rank { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 0.3rem; }
+  .level-up-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .level-up-close { margin-top: 1.2rem; padding: 8px 22px; border-radius: 7px; border: 1px solid var(--border2); background: transparent; color: var(--soft); cursor: pointer; font-family: var(--sans); font-size: 13px; }
+
+  /* STUDIENKOLLEG */
+  .stk-header {
+    text-align: center; margin-bottom: 1.25rem; padding: 1rem;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .stk-title { font-size: 17px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .stk-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); letter-spacing: 0.06em; }
+
+  .stk-war {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #fffbf2; border: 1px solid #e8d5a0;
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 1rem;
+    font-size: 12px; color: var(--soft); line-height: 1.7;
+  }
+  .stk-war strong { color: var(--text); }
+
+  .stk-summary { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-bottom: 1rem; }
+  .stk-sum-card {
+    background: var(--bg2); border-radius: 10px; padding: 10px; text-align: center;
+    border: 1px solid var(--border2); box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .stk-sum-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-family: var(--mono); }
+  .stk-sum-val { font-size: 18px; font-weight: 500; color: var(--text); }
+
+  .stk-ob { margin-bottom: 1.25rem; }
+  .stk-ob-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+  .stk-ob-track { height: 3px; background: var(--dim); border-radius: 2px; }
+  .stk-ob-fill { height: 3px; border-radius: 2px; background: #111; transition: width 0.5s; }
+
+  /* PHASE CARDS */
+  .stk-phase {
+    border-radius: 14px; margin-bottom: 10px; overflow: hidden;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    transition: box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+  }
+  .stk-phase::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 14px 0 0 14px; background: var(--phase-color, #ccc); opacity: 0.7;
+  }
+  .stk-phase:hover { box-shadow: 0 3px 16px rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.2); }
+  .stk-phase:hover::before { opacity: 1; }
+  .stk-phase.open { border-color: rgba(0,0,0,0.18); }
+  .stk-phase.open::before { opacity: 1; }
+
+  .stk-ph-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 15px 18px 15px 20px; cursor: pointer; user-select: none; transition: background 0.15s;
+  }
+  .stk-ph-head:hover { background: var(--bg3); }
+
+  .stk-ph-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--soft); font-family: var(--mono); flex-shrink: 0;
+    background: var(--bg3); transition: all 0.2s;
+  }
+  .stk-ph-num.done { background: #111; color: #fff; border-color: #111; }
+
+  .stk-ph-meta { flex: 1; min-width: 0; }
+  .stk-ph-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .stk-ph-time { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .stk-ph-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .stk-bar-wrap { width: 64px; }
+  .stk-bar-track { height: 2px; background: var(--dim); border-radius: 1px; }
+  .stk-bar-fill { height: 2px; border-radius: 1px; background: var(--phase-color, #999); transition: width 0.4s; }
+  .stk-pct { font-size: 11px; color: var(--soft); font-family: var(--mono); width: 30px; text-align: right; }
+  .stk-chev { font-size: 11px; color: var(--muted); transition: transform 0.2s; }
+  .stk-chev.open { transform: rotate(180deg); }
+
+  .stk-body { display: none; padding: 0 20px 18px 20px; }
+  .stk-body.open { display: block; }
+  .stk-divider { height: 1px; background: var(--border); margin-bottom: 16px; }
+
+  .stk-info {
+    background: var(--bg3); border-radius: 8px;
+    border: 1px solid var(--border); border-left: 2px solid var(--phase-color, #ccc);
+    padding: 10px 13px; font-size: 12px; color: var(--soft); line-height: 1.7; margin-bottom: 14px;
+  }
+
+  .stk-sec {
+    font-size: 9px; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 8px; padding-bottom: 5px;
+    border-bottom: 1px solid var(--border); font-family: var(--mono);
+  }
+
+  .stk-tasks { display: flex; flex-direction: column; gap: 4px; margin-bottom: 1rem; }
+  .stk-task {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; transition: all 0.12s;
+  }
+  .stk-task:hover { background: var(--bg3); border-color: var(--border); }
+  .stk-chk {
+    width: 15px; height: 15px; border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.2); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px; transition: all 0.15s; background: var(--bg2);
+  }
+  .stk-chk.done { background: #111; border-color: #111; }
+  .stk-chk svg { display: none; }
+  .stk-chk.done svg { display: block; }
+  .stk-lbl { font-size: 12px; color: var(--soft); flex: 1; line-height: 1.5; }
+  .stk-task:hover .stk-lbl { color: var(--text); }
+  .stk-lbl.done { text-decoration: line-through; opacity: 0.4; }
+  .stk-tag {
+    font-size: 9px; padding: 2px 7px; border-radius: 10px;
+    border: 1px solid var(--border); color: var(--muted);
+    white-space: nowrap; font-family: var(--mono); margin-top: 2px; flex-shrink: 0;
+  }
+  .stk-tag.critical { border-color: rgba(220,80,60,0.4); color: #c0392b; background: #fff5f5; }
+  .stk-tag.milestone { border-color: rgba(52,120,200,0.3); color: #2176c7; background: #f0f7ff; }
+  .stk-tag.exam { border-color: rgba(160,120,40,0.3); color: #8a6a10; background: #fffbf0; }
+
+  .stk-dl-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1rem; }
+  .stk-dl {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg2); cursor: pointer; transition: all 0.15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .stk-dl:hover { border-color: var(--border2); background: var(--bg3); }
+  .stk-dl.hit { border-color: rgba(160,120,40,0.35); background: #fffdf5; }
+  .stk-dl-chk {
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.2); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; background: var(--bg2);
+  }
+  .stk-dl-chk.done { background: #111; border-color: #111; }
+  .stk-dl-chk svg { display: none; }
+  .stk-dl-chk.done svg { display: block; }
+  .stk-dl-lbl { flex: 1; font-size: 12px; color: var(--soft); }
+  .stk-dl-lbl.done { text-decoration: line-through; opacity: 0.4; }
+  .stk-dl-date {
+    font-size: 10px; font-family: var(--mono); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; white-space: nowrap;
+  }
+  .stk-dl-date.exam-tag { border-color: rgba(52,120,200,0.3); color: #2176c7; background: #f0f7ff; }
+
+  .stk-res-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1rem; }
+  .stk-res {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg2); cursor: pointer; transition: all 0.15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .stk-res:hover { background: var(--bg3); border-color: var(--border2); }
+  .stk-res.using { border-color: rgba(160,120,40,0.35); background: #fffdf5; }
+  .stk-res.done-r { opacity: 0.35; }
+  .stk-res-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--dim); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .stk-res-body { flex: 1; min-width: 0; }
+  .stk-res-name { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .stk-res-note { font-size: 10px; color: var(--muted); }
+  .stk-res-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+  .stk-res-type { font-size: 9px; padding: 2px 6px; border-radius: 6px; background: var(--dim); color: var(--muted); font-family: var(--mono); }
+  .stk-res-st {
+    font-size: 9px; padding: 2px 7px; border-radius: 6px;
+    border: 1px solid var(--border); color: var(--muted);
+    cursor: pointer; font-family: var(--mono); transition: all 0.15s;
+  }
+  .stk-res-st.using { border-color: rgba(160,120,40,0.4); color: #8a6a10; background: #fffdf5; }
+  .stk-res-st.done { opacity: 0.5; }
+
+  .stk-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 1rem; }
+  .stk-chip {
+    font-size: 10px; padding: 3px 10px; border-radius: 20px;
+    border: 1px solid var(--border); color: var(--muted);
+    background: var(--bg2); font-family: var(--mono); transition: all 0.12s;
+  }
+  .stk-chip:hover { border-color: var(--border2); color: var(--soft); }
+  .stk-chip.gold { border-color: rgba(160,120,40,0.4); color: #8a6a10; background: #fffdf5; }
+
+  .stk-subj-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 1rem; }
+  .stk-subj {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .stk-subj-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .stk-subj-topics { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  .stk-warn {
+    display: flex; gap: 9px; align-items: flex-start;
+    background: #fff5f5; border: 1px solid rgba(200,60,40,0.3);
+    border-radius: 8px; padding: 11px 13px;
+    font-size: 12px; color: #c0392b; line-height: 1.6; margin-bottom: 1rem;
+  }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+  @media (max-width: 480px) {
+    .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .header-title { font-size: 22px; }
+  }
+  /* ── DAILY MISSION CARD ── */
+  .mission-card {
+    background: #111; color: #fff; border-radius: 14px;
+    padding: 1rem 1.25rem; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .mission-icon { font-size: 22px; flex-shrink: 0; }
+  .mission-body { flex: 1; min-width: 0; }
+  .mission-label { font-family: var(--mono); font-size: 9px; color: #888; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .mission-text { font-size: 14px; font-weight: 500; color: #fff; line-height: 1.4; }
+  .mission-input {
+    background: transparent; border: none; border-bottom: 1px solid #333;
+    color: #fff; font-family: var(--sans); font-size: 13px;
+    padding: 3px 0; outline: none; width: 100%; margin-top: 4px;
+  }
+  .mission-input::placeholder { color: #555; }
+  .mission-done-btn {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px; padding: 6px 14px; font-size: 11px;
+    color: #ccc; cursor: pointer; font-family: var(--sans); white-space: nowrap;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .mission-done-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+  .mission-done-btn.done { background: #fff; color: #111; border-color: #fff; }
+
+  /* ── SUBJECT HEALTH TRACKER ── */
+  .health-strip {
+    display: grid; grid-template-columns: repeat(6, minmax(0,1fr));
+    gap: 6px; margin-bottom: 1rem;
+  }
+  .health-card {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 8px 6px; text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .health-emoji { font-size: 14px; margin-bottom: 3px; }
+  .health-name { font-family: var(--mono); font-size: 8px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 4px; }
+  .health-dot { width: 8px; height: 8px; border-radius: 50%; margin: 0 auto; }
+
+  /* ── WEEKLY PLANNER ── */
+  .planner-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; margin-bottom: 1rem; }
+  .planner-day { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 8px 6px; }
+  .planner-day.today { border-color: #111; border-width: 2px; }
+  .planner-day-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-align: center; margin-bottom: 6px; letter-spacing: 0.06em; }
+  .planner-day.today .planner-day-label { color: #111; font-weight: 500; }
+  .planner-input {
+    width: 100%; background: transparent; border: none;
+    font-size: 10px; color: var(--text); font-family: var(--sans);
+    resize: none; outline: none; min-height: 48px; line-height: 1.4;
+    padding: 0;
+  }
+  .planner-input::placeholder { color: #ccc; }
+
+  /* ── XP GROWTH GRAPH ── */
+  .xp-graph-wrap { background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .xp-graph-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  .xp-graph-canvas { width: 100%; height: 120px; display: block; }
+
+  /* ── ACHIEVEMENT BADGES ── */
+  .badges-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .badge-item {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+    min-width: 180px; flex: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.15s;
+  }
+  .badge-item.unlocked { border-color: #111; background: #111; }
+  .badge-item.unlocked .badge-name { color: #fff; }
+  .badge-item.unlocked .badge-desc { color: #888; }
+  .badge-icon { font-size: 20px; flex-shrink: 0; filter: grayscale(1); opacity: 0.3; transition: all 0.2s; }
+  .badge-item.unlocked .badge-icon { filter: none; opacity: 1; }
+  .badge-name { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .badge-desc { font-size: 10px; color: #ccc; font-family: var(--mono); margin-top: 1px; }
+
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+<div id="xpToast">+0 XP</div>
+
+<div id="levelUp">
+  <div class="level-up-box">
+    <div class="level-up-icon">🚀</div>
+    <div class="level-up-title">RANK UP</div>
+    <div class="level-up-rank" id="luRank">Explorer</div>
+    <div class="level-up-sub" id="luSub">Keep pushing, Abhi!</div>
+    <button class="level-up-close" onclick="closeLevelUp()">Continue mission</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div class="header-logo">Cosmic OS v1 · Mission Control</div>
+    <div class="header-title">ABHISHEK'S <span>ASTROPHYSICIST JOURNEY</span></div>
+    <div class="header-sub" id="headerSub">Nagpur → Germany → B.Sc. Physics &amp; Astronomy → Stars</div>
+  </div>
+
+  <div class="xp-panel">
+    <div class="xp-top">
+      <div class="xp-rank">
+        <div class="rank-badge" id="rankBadge">LVL 1</div>
+        <div class="rank-name" id="rankName">Cadet</div>
+      </div>
+      <div class="xp-number" id="xpNumber">0 XP</div>
+    </div>
+    <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpFill" style="width:0%"></div></div>
+    <div class="xp-sub"><span id="xpCurrent">0 XP</span><span id="xpNext">100 XP to next rank</span></div>
+    <div class="xp-bonuses" id="xpBonuses"></div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Today</div><div class="metric-val blue" id="mToday">0/0</div></div>
+    <div class="metric"><div class="metric-label">Week</div><div class="metric-val green" id="mWeek">0%</div></div>
+    <div class="metric"><div class="metric-label">Streak</div><div class="metric-val yellow" id="mStreak">0</div></div>
+    <div class="metric"><div class="metric-label">Total XP</div><div class="metric-val purple" id="mXP">0</div></div>
+    <div class="metric"><div class="metric-label">🇩🇪 STK Phase</div><div class="metric-val" id="mSTK" style="font-size:15px">–/5</div></div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" id="navTracker" onclick="switchTab('tracker')">Tracker</button>
+    <button class="nav-btn" id="navPlanner" onclick="switchTab('planner')">Planner</button>
+    <button class="nav-btn" id="navChart" onclick="switchTab('chart')">Charts</button>
+    <button class="nav-btn" id="navBadges" onclick="switchTab('badges')">Badges</button>
+    <button class="nav-btn" id="navLibrary" onclick="switchTab('library')">Resources</button>
+    <button class="nav-btn" id="navStudienkolleg" onclick="switchTab('studienkolleg')">🇩🇪 STK</button>
+  </div>
+
+  <!-- DAILY MISSION CARD -->
+  <div class="mission-card" id="missionCard">
+    <div class="mission-icon">🎯</div>
+    <div class="mission-body">
+      <div class="mission-label">Today's main focus</div>
+      <input class="mission-input" id="missionInput" placeholder="What is the ONE thing you must do today?" oninput="saveMission(this.value)">
+    </div>
+    <button class="mission-done-btn" id="missionDoneBtn" onclick="toggleMissionDone()">Mark done</button>
+  </div>
+
+  <!-- SUBJECT HEALTH STRIP -->
+  <div class="health-strip" id="healthStrip"></div>
+
+  <div id="tabTracker">
+    <div class="week-nav">
+      <button class="week-btn" onclick="changeWeek(-1)">← prev</button>
+      <span class="week-label" id="weekLabel">WEEK 01</span>
+      <button class="week-btn" onclick="changeWeek(1)">next →</button>
+    </div>
+    <div class="streak-row" id="streakRow"></div>
+    <div class="day-tabs" id="dayTabs"></div>
+    <div id="systemsContainer"></div>
+    <div class="sec-label" style="margin-top:12px;">Mission log</div>
+    <textarea class="reflect-area" id="reflectArea" placeholder="What went well? What was hard? Any breakthroughs?"></textarea>
+    <button class="save-btn" onclick="saveReflect()">Save log</button>
+  </div>
+
+  <div id="tabChart" style="display:none;">
+    <div class="chart-panel">
+      <div class="chart-title">// WEEKLY TASK COMPLETION</div>
+      <div class="bar-chart" id="barChart"></div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#555"></div>Core</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#777"></div>German</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#999"></div>Python/ML</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#aaa"></div>Mind</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ccc"></div>Startup</div>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">// XP EARNED PER DAY (THIS WEEK)</div>
+      <div class="bar-chart" id="xpBarChart"></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">// SUBJECT BREAKDOWN THIS WEEK</div>
+      <div id="subjBreakdown"></div>
+    </div>
+  </div>
+
+  <div id="tabLibrary" style="display:none;">
+    <div class="filter-row" id="filterRow"></div>
+    <div id="libraryContent"></div>
+  </div>
+
+  <div id="tabPlanner" style="display:none;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;">// WEEKLY PLANNER — Fill in Sunday, execute Mon–Sat</div>
+    <div class="planner-grid" id="plannerGrid"></div>
+    <div class="xp-graph-wrap">
+      <div class="xp-graph-title">// XP GROWTH — Week by week</div>
+      <canvas class="xp-graph-canvas" id="xpGrowthCanvas"></canvas>
+    </div>
+  </div>
+
+  <div id="tabBadges" style="display:none;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1rem;">// ACHIEVEMENT BADGES</div>
+    <div class="badges-grid" id="badgesGrid"></div>
+  </div>
+
+  <div id="tabStudienkolleg" style="display:none;">
+    <div id="stkContent"></div>
+  </div>
+</div>
+
+<script>
+// ── PARTICLE FIELD (light mode — very faint on white) ──
+(function(){
+  var c=document.getElementById('starfield'),ctx=c.getContext('2d');
+  var W,H,pts=[];
+  function resize(){
+    W=c.width=innerWidth; H=c.height=innerHeight; pts=[];
+    for(var i=0;i<80;i++) pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,r:.4+Math.random()*.8,a:.04+Math.random()*.08});
+    ctx.clearRect(0,0,W,H);
+  }
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(function(p){
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0; if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,'+p.a+')'; ctx.fill();
+    });
+    for(var i=0;i<pts.length;i++) for(var j=i+1;j<pts.length;j++){
+      var d=Math.hypot(pts[j].x-pts[i].x,pts[j].y-pts[i].y);
+      if(d>65)continue;
+      ctx.strokeStyle='rgba(0,0,0,'+(0.025*(1-d/65)).toFixed(3)+')';
+      ctx.lineWidth=.3; ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke();
+    }
+    requestAnimationFrame(frame);
+  }
+  window.addEventListener('resize',resize); resize(); frame();
+})();
+
+var DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var RANKS=[
+  {name:'Cadet',min:0,max:100,lvl:1},{name:'Observer',min:100,max:250,lvl:2},
+  {name:'Explorer',min:250,max:500,lvl:3},{name:'Navigator',min:500,max:900,lvl:4},
+  {name:'Astronomer',min:900,max:1500,lvl:5},{name:'Astrophysicist',min:1500,max:999999,lvl:6},
+];
+var SYSTEMS=[
+  {id:'core',label:'System 1 — Core (Maths + Physics)',color:'#333333',resSubjects:['math','physics'],tasks:[
+    {id:'math_morning',label:'Maths — 1.5 hr morning deep work',xp:15},
+    {id:'phys_morning',label:'Physics — 1.5 hr morning deep work',xp:15},
+    {id:'phys_num',label:'Physics numericals / derivations — 1 hr',xp:10},
+    {id:'math_prac',label:'Maths practice — 45 min',xp:8},
+  ]},
+  {id:'german',label:'System 2 — German (A1 → A2 → B1)',color:'#555555',resSubjects:['german'],tasks:[
+    {id:'de_vocab',label:'Vocabulary — 15–20 new words (Anki / Quizlet)',xp:6},
+    {id:'de_grammar',label:'Grammar study — 30 min (textbook chapter)',xp:8},
+    {id:'de_sentences',label:"Write 5–10 sentences using today's words",xp:6},
+    {id:'de_listen',label:'German listening — podcast / video — 20 min',xp:6},
+    {id:'de_speak',label:'Speak aloud — shadowing or self-recording',xp:7},
+  ]},
+  {id:'mind',label:'System 3 — Mind (Psychology + Philosophy)',color:'#888888',resSubjects:['mind','astro'],tasks:[
+    {id:'psych',label:'Psychology / Philosophy — 30 min',xp:5},
+    {id:'astro_read',label:'Astronomy reading / video — 20 min',xp:5,optional:true},
+  ]},
+  {id:'skill',label:'System 4 — Python + ML',color:'#777777',resSubjects:['python'],tasks:[
+    {id:'python',label:'Python practice — 30 min',xp:8},
+    {id:'ml_proj',label:'Star Classifier / Binary Star project work',xp:12},
+    {id:'astro_code',label:'Astronomy coding (plots, simulations)',xp:10,optional:true},
+  ]},
+  {id:'startup',label:'System 5 — Luxastra Lab (Startup)',color:'#aaaaaa',resSubjects:[],priority:'low',timeLimit:'30–45 min max · complete systems 1–4 first',tasks:[
+    {id:'lux_research',label:'Research idea / niche — 30 min',xp:5,optional:true},
+    {id:'lux_website',label:'Improve website / design',xp:5,optional:true},
+    {id:'lux_features',label:'Brainstorm features / product ideas',xp:4,optional:true},
+    {id:'lux_market',label:'Market research — 20 min',xp:4,optional:true},
+    {id:'lux_notes',label:'Write ideas / notes / vision doc',xp:3,optional:true},
+  ]},
+];
+var SUNDAY_TASKS=[
+  {id:'sun_revise',label:'Revise whole week — Maths + Physics',xp:10},
+  {id:'sun_german',label:'German weekly review — flashcards + grammar recap',xp:8},
+  {id:'sun_mixed',label:'Solve mixed Maths + Physics questions',xp:10},
+  {id:'sun_docu',label:'Watch 1 astronomy documentary',xp:5},
+  {id:'sun_plan',label:'Plan next week — set goals per system',xp:8},
+  {id:'sun_check',label:'Progress check — am I improving? Adjust strategy.',xp:5},
+  {id:'sun_lux',label:'Luxastra Lab — weekly idea review (optional, 20 min)',xp:3,optional:true},
+];
+var SUBJECTS=[
+  {id:'math',label:'Mathematics',dot:'#333'},{id:'physics',label:'Physics',dot:'#555'},
+  {id:'astro',label:'Astronomy',dot:'#777'},{id:'german',label:'German',dot:'#444'},
+  {id:'mind',label:'Psychology + Philosophy',dot:'#888'},{id:'python',label:'Python + ML',dot:'#666'},
+];
+var RESOURCES=[
+  {id:'r01',subject:'math',type:'book',priority:true,name:'NCERT Maths Class 11 & 12',note:"Your base — don't skip"},
+  {id:'r02',subject:'math',type:'book',priority:true,name:'RD Sharma Mathematics',note:'Build speed + confidence'},
+  {id:'r03',subject:'math',type:'book',priority:false,name:'IIT Maths by M.L. Khanna',note:'After basics — deep thinking'},
+  {id:'r04',subject:'math',type:'book',priority:false,name:'Calculus by James Stewart',note:'University level'},
+  {id:'r05',subject:'math',type:'video',priority:true,name:'3Blue1Brown',note:'Makes maths beautiful'},
+  {id:'r06',subject:'math',type:'video',priority:false,name:'Khan Academy',note:'Clear explanations'},
+  {id:'r07',subject:'physics',type:'book',priority:true,name:'NCERT Physics Class 11 & 12',note:'Foundation — start here'},
+  {id:'r08',subject:'physics',type:'book',priority:true,name:'Concepts of Physics — H.C. Verma',note:'Best for understanding'},
+  {id:'r09',subject:'physics',type:'book',priority:false,name:'Halliday, Resnick & Walker',note:'Used worldwide — advanced'},
+  {id:'r10',subject:'physics',type:'video',priority:false,name:'Physics Wallah',note:'Visual learning'},
+  {id:'r11',subject:'physics',type:'video',priority:false,name:'MIT OpenCourseWare',note:'University level lectures'},
+  {id:'r12',subject:'astro',type:'book',priority:true,name:'Cosmos by Carl Sagan',note:'Builds passion — read first'},
+  {id:'r13',subject:'astro',type:'book',priority:true,name:'Astrophysics for People in a Hurry',note:'Quick but powerful'},
+  {id:'r17',subject:'german',type:'book',priority:true,name:'Menschen A1 (Kursbuch)',note:'Start here — standard A1 textbook'},
+  {id:'r24',subject:'german',type:'book',priority:true,name:'Menschen A2 (Kursbuch)',note:'After A1 — builds on the base'},
+  {id:'r25',subject:'german',type:'book',priority:false,name:'Schritte International A1',note:'Alternative beginner book'},
+  {id:'r26',subject:'german',type:'book',priority:false,name:'Grammatik Aktiv A1–B1',note:'Dedicated grammar practice book'},
+  {id:'r27',subject:'german',type:'book',priority:false,name:'Langenscheidt Deutsch A1 Wortschatz',note:'Vocabulary builder'},
+  {id:'r28',subject:'german',type:'book',priority:false,name:'Em Neu A2 Brückenkurs',note:'Bridge A1 → A2'},
+  {id:'r18',subject:'german',type:'app',priority:true,name:'Anki',note:'Spaced repetition — build your own deck'},
+  {id:'r19',subject:'german',type:'app',priority:true,name:'Duolingo',note:'Daily habit — 10–15 min warm-up'},
+  {id:'r29',subject:'german',type:'app',priority:false,name:'Pimsleur German',note:'Audio-first — great for speaking'},
+  {id:'r30',subject:'german',type:'app',priority:false,name:'Babbel',note:'Grammar-focused A1/A2'},
+  {id:'r31',subject:'german',type:'video',priority:true,name:'Deutsch mit Marija (YouTube)',note:'Clear A1/A2 lessons in English'},
+  {id:'r32',subject:'german',type:'video',priority:true,name:'Learn German with Anja (YouTube)',note:'Native speaker — great for listening'},
+  {id:'r33',subject:'german',type:'video',priority:false,name:'DW Learn German',note:'Free official resource from Deutsche Welle'},
+  {id:'r34',subject:'german',type:'video',priority:false,name:'Slow German Podcast',note:'Slow clear speech — beginners'},
+  {id:'r20',subject:'mind',type:'book',priority:false,name:'Psychology by David G. Myers',note:'Core concepts'},
+  {id:'r21',subject:'mind',type:'book',priority:false,name:"Sophie's World",note:'Philosophy made easy'},
+  {id:'r22',subject:'python',type:'book',priority:true,name:'Python Crash Course',note:'Best beginner book'},
+  {id:'r23',subject:'python',type:'video',priority:true,name:'freeCodeCamp',note:'Free full Python course'},
+];
+
+var state={},currentWeek=1,currentDay=0,currentTab='tracker',currentFilter='all';
+function load(){try{var s=localStorage.getItem('cosmicos_v1');if(s)state=JSON.parse(s);}catch(e){}}
+function save(){try{localStorage.setItem('cosmicos_v1',JSON.stringify(state));}catch(e){}}
+function tkey(w,d,id){return 'w'+w+'d'+d+'_'+id;}
+function rkey(w,d){return 'ref_w'+w+'d'+d;}
+function getT(w,d,id){return !!state[tkey(w,d,id)];}
+function setT(w,d,id,v){state[tkey(w,d,id)]=v;save();}
+function getRef(w,d){return state[rkey(w,d)]||'';}
+function setRef(w,d,v){state[rkey(w,d)]=v;save();}
+function getRst(id){return state['res_'+id]||'none';}
+function setRst(id,v){state['res_'+id]=v;save();}
+function getTasksForDay(d){return d===6?SUNDAY_TASKS:SYSTEMS.flatMap(function(s){return s.tasks;});}
+function countDone(w,d){return getTasksForDay(d).filter(function(t){return getT(w,d,t.id);}).length;}
+function calcTotalXP(){var xp=0;for(var w=1;w<=currentWeek;w++)for(var d=0;d<7;d++)getTasksForDay(d).forEach(function(t){if(getT(w,d,t.id))xp+=t.xp||5;});var streak=calcStreak();if(streak>=3)xp+=(streak-2)*5;return xp;}
+function calcDayXP(w,d){var xp=0;getTasksForDay(d).forEach(function(t){if(getT(w,d,t.id))xp+=t.xp||5;});return xp;}
+function calcStreak(){var s=0;for(var d=currentDay;d>=0;d--){if(countDone(currentWeek,d)>0)s++;else break;}return s;}
+function weekStats(w){var total=0,done=0;for(var d=0;d<7;d++){var ts=getTasksForDay(d);total+=ts.length;done+=ts.filter(function(t){return getT(w,d,t.id);}).length;}return{total:total,done:done};}
+function getRankInfo(xp){for(var i=RANKS.length-1;i>=0;i--)if(xp>=RANKS[i].min)return{rank:RANKS[i],idx:i};return{rank:RANKS[0],idx:0};}
+function showXPToast(a){var t=document.getElementById('xpToast');t.textContent='+'+a+' XP';t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1800);}
+function checkLevelUp(oldXP,newXP){var o=getRankInfo(oldXP),n=getRankInfo(newXP);if(n.idx>o.idx){document.getElementById('luRank').textContent=n.rank.name;document.getElementById('luSub').textContent='Level '+n.rank.lvl+' reached — keep going, Abhi!';document.getElementById('levelUp').classList.add('show');}}
+function closeLevelUp(){document.getElementById('levelUp').classList.remove('show');}
+
+function renderXP(){
+  var xp=calcTotalXP(),ri=getRankInfo(xp),rank=ri.rank;
+  var pct=rank.max===999999?99:Math.round((xp-rank.min)/(rank.max-rank.min)*100);
+  document.getElementById('rankBadge').textContent='LVL '+rank.lvl;
+  document.getElementById('rankName').textContent=rank.name;
+  document.getElementById('xpNumber').textContent=xp+' XP';
+  document.getElementById('xpFill').style.width=Math.min(pct,100)+'%';
+  document.getElementById('xpCurrent').textContent=xp+' XP';
+  document.getElementById('mXP').textContent=xp;
+  document.getElementById('xpNext').textContent=rank.max===999999?'MAX RANK — Astrophysicist!':(rank.max-xp)+' XP to '+RANKS[ri.idx+1].name;
+  var streak=calcStreak(),bonuses=[];
+  bonuses.push({label:'Task XP: +3–15 per task',earned:true});
+  if(streak>=3)bonuses.push({label:'Streak bonus: +'+(streak-2)*5+' XP ('+streak+' days)',earned:true});
+  if(streak<3)bonuses.push({label:'3-day streak = bonus XP',earned:false});
+  document.getElementById('xpBonuses').innerHTML=bonuses.map(function(b){return '<span class="bonus-pill'+(b.earned?' earned':'')+'">'+b.label+'</span>';}).join('');
+}
+
+function renderMetrics(){
+  var td=getTasksForDay(currentDay),todDone=td.filter(function(t){return getT(currentWeek,currentDay,t.id);}).length;
+  var ws=weekStats(currentWeek);
+  document.getElementById('mToday').textContent=todDone+'/'+td.length;
+  document.getElementById('mWeek').textContent=ws.total>0?Math.round(ws.done/ws.total*100)+'%':'0%';
+  document.getElementById('mStreak').textContent=calcStreak();
+  document.getElementById('weekLabel').textContent='WEEK '+String(currentWeek).padStart(2,'0');
+  var stkDone=stkAllTasks().filter(function(t){return !!state['stk_'+t.id];}).length;
+  var stkTotal=stkAllTasks().length,stkPct=stkTotal?Math.round(stkDone/stkTotal*100):0;
+  var stkIdx=0;STK_PHASES.forEach(function(p,i){if(stkPhDone(p)>0)stkIdx=i;});
+  document.getElementById('mSTK').textContent=(stkIdx+1)+'/5';
+  var sub='Nagpur → Germany → B.Sc. Physics & Astronomy → Stars';
+  if(stkPct>0)sub+=' · STK '+stkPct+'%';
+  document.getElementById('headerSub').textContent=sub;
+}
+
+function renderStreak(){
+  var streak=calcStreak();
+  var h=DAYS.map(function(d,i){
+    var done=countDone(currentWeek,i),total=getTasksForDay(i).length;
+    var full=done===total&&done>0,partial=done>0&&!full;
+    var bg='transparent',tc='#bbb',bc='rgba(0,0,0,0.12)';
+    if(full){bg='#111';bc='#111';tc='#fff';}
+    else if(partial){bg='#f0f0f0';tc='#666';}
+    var ring=i===currentDay?'box-shadow:0 0 0 2px #111;':'';
+    return '<div class="streak-dot" style="background:'+bg+';border-color:'+bc+';color:'+tc+';'+ring+'" onclick="selectDay('+i+')">'+d[0]+'</div>';
+  }).join('');
+  document.getElementById('streakRow').innerHTML=h+'<span class="streak-info">'+(streak>0?streak+' day streak 🔥':'Start your streak!')+'</span>';
+}
+
+function renderDayTabs(){
+  document.getElementById('dayTabs').innerHTML=DAYS.map(function(d,i){
+    return '<button class="day-tab'+(i===currentDay?' active':'')+'" onclick="selectDay('+i+')">'+d+(i===6?' ☀':'')+'</button>';
+  }).join('');
+}
+
+function chkHTML(t,checked,color){
+  var opt=t.optional?'<span class="task-opt">opt</span>':'';
+  return '<div class="task-row" data-tid="'+t.id+'">'
+    +'<div class="task-check'+(checked?' done':'')+'" style="'+(checked?'background:'+color+';border-color:'+color+';':'')+'">'
+    +'<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><polyline points="1.5,4.5 3.5,7 7.5,1.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    +'</div>'
+    +'<span class="task-text'+(checked?' done':'')+'">'+t.label+opt+'</span>'
+    +'<span class="task-xp'+(checked?' earned':'')+'">+'+(t.xp||5)+'</span>'
+    +'</div>';
+}
+
+function renderSystems(){
+  var c=document.getElementById('systemsContainer');
+  if(currentDay===6){
+    var col='#555',done=SUNDAY_TASKS.filter(function(t){return getT(currentWeek,6,t.id);}).length;
+    var pct=Math.round(done/SUNDAY_TASKS.length*100);
+    var wxp=SUNDAY_TASKS.filter(function(t){return getT(currentWeek,6,t.id);}).reduce(function(a,t){return a+t.xp;},0);
+    c.innerHTML='<div class="sys-card"><div class="sys-head"><span class="sys-title">☀ Sunday — Strategy Day</span><div class="sys-right"><span class="sys-xp">+'+wxp+' XP</span><span class="sys-pct" style="color:'+col+'">'+pct+'%</span></div></div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%;background:'+col+'"></div></div><div class="tasks">'+SUNDAY_TASKS.map(function(t){return chkHTML(t,getT(currentWeek,6,t.id),col);}).join('')+'</div></div>';
+    attachT(SUNDAY_TASKS);return;
+  }
+  var h=SYSTEMS.map(function(sys){
+    var done=sys.tasks.filter(function(t){return getT(currentWeek,currentDay,t.id);}).length;
+    var pct=Math.round(done/sys.tasks.length*100);
+    var earnedXP=sys.tasks.filter(function(t){return getT(currentWeek,currentDay,t.id);}).reduce(function(a,t){return a+t.xp;},0);
+    var isStartup=sys.id==='startup';
+    var cardExtra=isStartup?'border-color:rgba(0,0,0,0.06);background:#fafafa;':'';
+    var resBtn='';
+    if(!isStartup){
+      var activeRes=RESOURCES.filter(function(r){return sys.resSubjects.includes(r.subject)&&getRst(r.id)==='active';});
+      resBtn=activeRes.length>0
+        ?'<span style="font-size:10px;color:#555;cursor:pointer;font-family:var(--mono);" onclick="showResFor(\''+sys.id+'\')">'+activeRes.length+' resource'+(activeRes.length>1?'s':'')+' active</span>'
+        :'<span style="font-size:10px;color:#bbb;cursor:pointer;font-family:var(--mono);" onclick="switchTab(\'library\')">pick resources</span>';
+    }
+    var priorityTag=isStartup?'<span style="font-size:9px;font-family:var(--mono);color:#bbb;border:1px solid #e0e0e0;border-radius:4px;padding:1px 6px;margin-right:4px;">LOW PRIORITY</span>':'';
+    var timeWarning=isStartup?'<div style="font-size:10px;color:#bbb;font-family:var(--mono);margin-bottom:10px;padding:6px 8px;background:#f5f5f5;border-radius:6px;border-left:2px solid #e0e0e0;">⚠ Complete systems 1–4 first · '+sys.timeLimit+'</div>':'';
+    return '<div class="sys-card" style="'+cardExtra+'"><div class="sys-head"><span class="sys-title">'+priorityTag+sys.label+'</span><div class="sys-right">'+resBtn+'<span class="sys-xp">+'+earnedXP+' XP</span><span class="sys-pct" style="color:'+sys.color+'">'+pct+'%</span></div></div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%;background:'+sys.color+'"></div></div>'+timeWarning+'<div class="tasks">'+sys.tasks.map(function(t){return chkHTML(t,getT(currentWeek,currentDay,t.id),sys.color);}).join('')+'</div></div>';
+  }).join('');
+  c.innerHTML=h;
+  attachT(SYSTEMS.flatMap(function(s){return s.tasks;}));
+}
+
+function attachT(tasks){
+  tasks.forEach(function(t){
+    var row=document.querySelector('.task-row[data-tid="'+t.id+'"]');
+    if(!row)return;
+    row.onclick=function(){
+      var oldXP=calcTotalXP(),cur=getT(currentWeek,currentDay,t.id);
+      setT(currentWeek,currentDay,t.id,!cur);
+      var newXP=calcTotalXP();
+      if(!cur)showXPToast(t.xp||5);
+      checkLevelUp(oldXP,newXP);render();
+    };
+  });
+}
+
+function renderCharts(){renderCompletionChart();renderXPChart();renderSubjBreakdown();}
+function renderCompletionChart(){
+  var data=DAYS.map(function(d,i){var ts=getTasksForDay(i),done=ts.filter(function(t){return getT(currentWeek,i,t.id);}).length;return{done:done,total:ts.length,pct:ts.length>0?done/ts.length:0};});
+  document.getElementById('barChart').innerHTML=data.map(function(d,i){
+    var pct=d.pct*100,col=d.pct===1?'#111':d.pct>0.5?'#555':'#e0e0e0';
+    var today=i===currentDay?'border:1px solid #111;':'';
+    return '<div class="bar-col"><div class="bar-val">'+d.done+'/'+d.total+'</div><div class="bar-wrap"><div class="bar" style="height:'+Math.max(pct,2)+'%;background:'+col+';'+today+'"></div></div><div class="bar-label">'+DAYS[i].slice(0,2)+'</div></div>';
+  }).join('');
+}
+function renderXPChart(){
+  var data=DAYS.map(function(d,i){return calcDayXP(currentWeek,i);}),maxXP=Math.max.apply(null,data)||1;
+  document.getElementById('xpBarChart').innerHTML=data.map(function(xp,i){
+    var pct=(xp/maxXP)*100,today=i===currentDay?'border:1px solid #111;':'',col=i===currentDay?'#111':'#aaa';
+    return '<div class="bar-col"><div class="bar-val" style="color:#aaa">'+xp+'</div><div class="bar-wrap"><div class="bar" style="height:'+Math.max(pct,2)+'%;background:'+col+';'+today+'"></div></div><div class="bar-label">'+DAYS[i].slice(0,2)+'</div></div>';
+  }).join('');
+}
+function renderSubjBreakdown(){
+  var subjData=SUBJECTS.map(function(subj){
+    var relTasks=[];SYSTEMS.forEach(function(sys){if(sys.resSubjects.includes(subj.id)){sys.tasks.forEach(function(t){if(getT(currentWeek,currentDay,t.id))relTasks.push(t);});}});
+    return{subj:subj,count:relTasks.length,xp:relTasks.reduce(function(a,t){return a+t.xp;},0)};
+  }).filter(function(d){return d.count>0;});
+  if(!subjData.length){document.getElementById('subjBreakdown').innerHTML='<div style="font-size:12px;color:#bbb;text-align:center;padding:1rem;">Complete tasks today to see breakdown.</div>';return;}
+  var maxXP=Math.max.apply(null,subjData.map(function(d){return d.xp;}));
+  document.getElementById('subjBreakdown').innerHTML=subjData.map(function(d){
+    var pct=maxXP>0?Math.round(d.xp/maxXP*100):0;
+    return '<div style="margin-bottom:10px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;"><span style="font-size:11px;color:#555;font-family:var(--mono);">'+d.subj.label+'</span><span style="font-size:11px;color:#333;font-family:var(--mono);">+'+d.xp+' XP</span></div><div style="height:4px;background:#e0e0e0;border-radius:2px;"><div style="height:4px;border-radius:2px;background:'+d.subj.dot+';width:'+pct+'%;transition:width 0.4s;"></div></div></div>';
+  }).join('');
+}
+
+function typeIcon(type){
+  if(type==='book')return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="1.5" width="8" height="11" rx="1.5" stroke="#555" stroke-width="1.1"/><line x1="4" y1="4.5" x2="8" y2="4.5" stroke="#555" stroke-width="0.9"/><line x1="4" y1="6.5" x2="8" y2="6.5" stroke="#555" stroke-width="0.9"/><line x1="4" y1="8.5" x2="6.5" y2="8.5" stroke="#555" stroke-width="0.9"/></svg>';
+  if(type==='video')return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="9" height="8" rx="1.5" stroke="#777" stroke-width="1.1"/><polygon points="9,7 13,4.5 13,9.5" fill="#777"/></svg>';
+  return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2.5" y="1.5" width="9" height="11" rx="2" stroke="#888" stroke-width="1.1"/><circle cx="7" cy="10" r="1" fill="#888"/></svg>';
+}
+
+function cycleRes(id){var c=getRst(id);setRst(id,c==='none'?'active':c==='active'?'done':'none');renderLibrary();renderMetrics();}
+function renderFilters(){
+  var filters=[{id:'all',label:'All'}].concat(SUBJECTS);
+  document.getElementById('filterRow').innerHTML=filters.map(function(f){
+    var active=currentFilter===f.id,subj=SUBJECTS.find(function(s){return s.id===f.id;});
+    var style=active?'background:#111;color:#fff;border-color:#111;':'';
+    return '<button class="filter-btn'+(active?' active':'')+'" style="'+style+'" onclick="setFilter(\''+f.id+'\')">'+f.label+'</button>';
+  }).join('');
+}
+function renderLibrary(){
+  var subjects=currentFilter==='all'?SUBJECTS:SUBJECTS.filter(function(s){return s.id===currentFilter;});
+  var h='';
+  subjects.forEach(function(subj){
+    var res=RESOURCES.filter(function(r){return r.subject===subj.id;});if(!res.length)return;
+    var act=res.filter(function(r){return getRst(r.id)==='active';}).length;
+    var dn=res.filter(function(r){return getRst(r.id)==='done';}).length;
+    h+='<div class="subj-section"><div class="subj-head"><div class="subj-dot" style="background:'+subj.dot+'"></div><span class="subj-label">'+subj.label+'</span><span class="subj-count"> '+act+' active · '+dn+'/'+res.length+' done</span></div>';
+    res.forEach(function(r){
+      var st=getRst(r.id);
+      var btnLbl=st==='active'?'active':st==='done'?'done':'set active';
+      var btnCls='status-btn'+(st==='active'?' is-active':st==='done'?' is-done':'');
+      h+='<div class="res-card'+(st==='active'?' active-res':st==='done'?' done-res':'')+'" onclick="cycleRes(\''+r.id+'\')">';
+      h+='<div class="res-icon">'+typeIcon(r.type)+'</div>';
+      h+='<div style="flex:1;min-width:0;"><div class="res-name">'+(r.priority?'<span class="pstar">★ </span>':'')+r.name+'</div><div class="res-note">'+r.note+'</div></div>';
+      h+='<div class="res-right"><span class="badge">'+r.type+'</span><button class="'+btnCls+'">'+btnLbl+'</button></div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  document.getElementById('libraryContent').innerHTML=h||'<div style="font-size:13px;color:#bbb;text-align:center;padding:2rem;">No resources found.</div>';
+}
+
+function switchTab(tab){
+  currentTab=tab;
+  ['tracker','planner','chart','badges','library','studienkolleg'].forEach(function(t){
+    var el=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(el)el.style.display=t===tab?'block':'none';
+    var btn=document.getElementById('nav'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn)btn.className='nav-btn'+(t===tab?' active':'');
+  });
+  if(tab==='chart')renderCharts();
+  if(tab==='planner'){renderPlanner();renderXPGrowth();}
+  if(tab==='badges')renderBadges();
+  if(tab==='library'){renderFilters();renderLibrary();}
+  if(tab==='studienkolleg')renderSTK();
+}
+
+// ── DAILY MISSION ──
+function missionKey(){var d=new Date();return 'mission_'+d.getFullYear()+'_'+d.getMonth()+'_'+d.getDate();}
+function saveMission(v){state[missionKey()+'_text']=v;save();}
+function toggleMissionDone(){
+  var k=missionKey()+'_done';
+  state[k]=!state[k];save();
+  var btn=document.getElementById('missionDoneBtn');
+  btn.textContent=state[k]?'✓ Done!':'Mark done';
+  btn.className='mission-done-btn'+(state[k]?' done':'');
+}
+function renderMission(){
+  var k=missionKey();
+  var inp=document.getElementById('missionInput');
+  var btn=document.getElementById('missionDoneBtn');
+  if(inp) inp.value=state[k+'_text']||'';
+  if(btn){
+    var done=!!state[k+'_done'];
+    btn.textContent=done?'✓ Done!':'Mark done';
+    btn.className='mission-done-btn'+(done?' done':'');
+  }
+}
+
+// ── SUBJECT HEALTH ──
+var HEALTH_SUBJECTS=[
+  {id:'math',   label:'Maths',   tasks:['math_morning','math_prac']},
+  {id:'physics',label:'Physics', tasks:['phys_morning','phys_num']},
+  {id:'german', label:'German',  tasks:['de_vocab','de_grammar','de_speak']},
+  {id:'python', label:'Python',  tasks:['python','ml_proj']},
+  {id:'mind',   label:'Mind',    tasks:['psych']},
+  {id:'startup',label:'Luxastra',tasks:['lux_research','lux_website']},
+];
+function getHealthStatus(subjTasks){
+  // check last 1, 3, 7 days
+  for(var days=1;days<=7;days++){
+    var d=new Date(); d.setDate(d.getDate()-(days-1));
+    var dayIdx=d.getDay()===0?6:d.getDay()-1;
+    var found=subjTasks.some(function(tid){return getT(currentWeek,dayIdx,tid);});
+    if(found) return days<=1?'green':days<=3?'yellow':'red';
+  }
+  return 'red';
+}
+function renderHealth(){
+  var el=document.getElementById('healthStrip');
+  if(!el)return;
+  el.innerHTML=HEALTH_SUBJECTS.map(function(s){
+    var status=getHealthStatus(s.tasks);
+    var emoji=status==='green'?'🟢':status==='yellow'?'🟡':'🔴';
+    var dotColor=status==='green'?'#22c55e':status==='yellow'?'#f59e0b':'#ef4444';
+    var dotOpacity=status==='red'?'0.3':'1';
+    return '<div class="health-card">'
+      +'<div class="health-emoji">'+emoji+'</div>'
+      +'<div class="health-name">'+s.label+'</div>'
+      +'<div class="health-dot" style="background:'+dotColor+';opacity:'+dotOpacity+'"></div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── WEEKLY PLANNER ──
+function plannerKey(day){return 'plan_w'+currentWeek+'_d'+day;}
+function renderPlanner(){
+  var el=document.getElementById('plannerGrid');
+  if(!el)return;
+  el.innerHTML=DAYS.map(function(d,i){
+    var isToday=i===currentDay;
+    var val=state[plannerKey(i)]||'';
+    return '<div class="planner-day'+(isToday?' today':'')+'">'
+      +'<div class="planner-day-label">'+d+(isToday?' ·':' ')+'</div>'
+      +'<textarea class="planner-input" placeholder="Focus..." oninput="savePlan('+i+',this.value)">'+val+'</textarea>'
+      +'</div>';
+  }).join('');
+}
+function savePlan(day,val){state[plannerKey(day)]=val;save();}
+
+// ── XP GROWTH CHART ──
+function renderXPGrowth(){
+  var cv=document.getElementById('xpGrowthCanvas');
+  if(!cv)return;
+  var ctx=cv.getContext('2d');
+  var W=cv.offsetWidth||680; cv.width=W; cv.height=120;
+  // calculate XP per week (up to currentWeek)
+  var weeks=[];
+  for(var w=1;w<=Math.max(currentWeek,4);w++){
+    var xp=0;
+    for(var d=0;d<7;d++) getTasksForDay(d).forEach(function(t){if(getT(w,d,t.id))xp+=t.xp||5;});
+    weeks.push({w:w,xp:xp});
+  }
+  var maxXP=Math.max.apply(null,weeks.map(function(w){return w.xp;}))||50;
+  var pad={l:30,r:16,t:10,b:24};
+  var gW=W-pad.l-pad.r, gH=120-pad.t-pad.b;
+  ctx.clearRect(0,0,W,120);
+  // grid lines
+  ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(function(f){
+    var y=pad.t+gH*(1-f);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+gW,y); ctx.stroke();
+  });
+  // line
+  if(weeks.length>1){
+    ctx.beginPath();
+    weeks.forEach(function(wk,i){
+      var x=pad.l+(i/(weeks.length-1))*gW;
+      var y=pad.t+gH*(1-(wk.xp/maxXP));
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle='#111'; ctx.lineWidth=2; ctx.stroke();
+    // fill
+    ctx.beginPath();
+    weeks.forEach(function(wk,i){
+      var x=pad.l+(i/(weeks.length-1))*gW;
+      var y=pad.t+gH*(1-(wk.xp/maxXP));
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.lineTo(pad.l+gW,pad.t+gH); ctx.lineTo(pad.l,pad.t+gH); ctx.closePath();
+    ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fill();
+    // dots
+    weeks.forEach(function(wk,i){
+      var x=pad.l+(i/(weeks.length-1))*gW;
+      var y=pad.t+gH*(1-(wk.xp/maxXP));
+      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fillStyle='#111'; ctx.fill();
+    });
+  }
+  // labels
+  ctx.fillStyle='#aaa'; ctx.font='9px DM Mono,monospace'; ctx.textAlign='center';
+  weeks.forEach(function(wk,i){
+    var x=pad.l+(weeks.length>1?i/(weeks.length-1):0.5)*gW;
+    ctx.fillText('W'+wk.w,x,pad.t+gH+14);
+  });
+  ctx.textAlign='right';
+  ctx.fillText(maxXP,pad.l-4,pad.t+4);
+  ctx.fillText(0,pad.l-4,pad.t+gH+4);
+}
+
+// ── ACHIEVEMENTS ──
+var ACHIEVEMENTS=[
+  {id:'ach_first',  icon:'🌱', name:'First step',      desc:'Complete your first task',        check:function(){return calcTotalXP()>0;}},
+  {id:'ach_streak3',icon:'🔥', name:'3-day streak',    desc:'Study 3 days in a row',           check:function(){return calcStreak()>=3;}},
+  {id:'ach_streak7',icon:'⚡', name:'7-day warrior',   desc:'Study 7 days in a row',           check:function(){return calcStreak()>=7;}},
+  {id:'ach_xp100',  icon:'💯', name:'100 XP earned',   desc:'Reach 100 total XP',              check:function(){return calcTotalXP()>=100;}},
+  {id:'ach_xp500',  icon:'⭐', name:'500 XP club',     desc:'Reach 500 total XP',              check:function(){return calcTotalXP()>=500;}},
+  {id:'ach_xp1500', icon:'🏆', name:'Astrophysicist',  desc:'Reach max rank — 1500 XP',        check:function(){return calcTotalXP()>=1500;}},
+  {id:'ach_german', icon:'🇩🇪', name:'Guten Morgen',   desc:'Complete a full German day',       check:function(){var sys=SYSTEMS.find(function(s){return s.id==='german';});return sys&&sys.tasks.every(function(t){return getT(currentWeek,currentDay,t.id);});}},
+  {id:'ach_core',   icon:'⚛', name:'Physics beast',   desc:'Complete a full Core day',         check:function(){var sys=SYSTEMS.find(function(s){return s.id==='core';});return sys&&sys.tasks.every(function(t){return getT(currentWeek,currentDay,t.id);});}},
+  {id:'ach_stk1',   icon:'🎓', name:'STK started',     desc:'Complete any STK task',            check:function(){return stkAllTasks().some(function(t){return !!state['stk_'+t.id];});}},
+  {id:'ach_stk_ph1',icon:'✈️', name:'India ready',     desc:'Complete all Phase 1 STK tasks',  check:function(){var ph=STK_PHASES[0];return stkPhPct(ph)===100;}},
+  {id:'ach_sunday', icon:'🗓', name:'Strategist',       desc:'Complete a full Sunday review',   check:function(){return SUNDAY_TASKS.slice(0,5).every(function(t){return getT(currentWeek,6,t.id);});}},
+  {id:'ach_mission',icon:'🎯', name:'On a mission',     desc:'Complete today\'s main focus',    check:function(){return !!state[missionKey()+'_done'];}},
+];
+function renderBadges(){
+  var el=document.getElementById('badgesGrid');
+  if(!el)return;
+  el.innerHTML=ACHIEVEMENTS.map(function(a){
+    var unlocked=a.check();
+    return '<div class="badge-item'+(unlocked?' unlocked':'')+'">'
+      +'<div class="badge-icon">'+a.icon+'</div>'
+      +'<div><div class="badge-name">'+a.name+'</div><div class="badge-desc">'+a.desc+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+function showResFor(sysId){var sys=SYSTEMS.find(function(s){return s.id===sysId;});if(!sys)return;currentFilter=sys.resSubjects[0];switchTab('library');}
+function setFilter(f){currentFilter=f;renderFilters();renderLibrary();}
+function selectDay(d){currentDay=d;render();}
+function changeWeek(dir){currentWeek=Math.max(1,currentWeek+dir);render();}
+function saveReflect(){setRef(currentWeek,currentDay,document.getElementById('reflectArea').value);var b=document.querySelector('.save-btn');b.textContent='Saved ✓';setTimeout(function(){b.textContent='Save log';},1500);}
+
+function render(){
+  renderXP();renderMetrics();renderMission();renderHealth();
+  if(currentTab==='tracker'){renderStreak();renderDayTabs();renderSystems();document.getElementById('reflectArea').value=getRef(currentWeek,currentDay);}
+  else if(currentTab==='chart')renderCharts();
+  else if(currentTab==='planner'){renderPlanner();renderXPGrowth();}
+  else if(currentTab==='badges')renderBadges();
+  else if(currentTab==='studienkolleg')renderSTK();
+  else{renderFilters();renderLibrary();}
+}
+
+var PHASE_COLORS=[
+  {color:'#6366f1',glow:'rgba(99,102,241,0.15)'},
+  {color:'#0ea5e9',glow:'rgba(14,165,233,0.12)'},
+  {color:'#10b981',glow:'rgba(16,185,129,0.12)'},
+  {color:'#f59e0b',glow:'rgba(245,158,11,0.15)'},
+  {color:'#ef4444',glow:'rgba(239,68,68,0.12)'},
+];
+
+var STK_OPEN='ph1';
+var STK_PHASES=[
+  {id:'ph1',num:'01',label:'Preparation in India',timeline:'Now → 12 months before departure',
+   info:'APS certificate and B2 German are the two hardest gates. Your HSC Physics and Maths background is a real advantage for T-Kurs. Start both immediately.',
+   deadlines:[
+     {id:'sd_speak',label:'IELTS Speaking Test',date:'May 2026',exam:true},
+     {id:'sd_exam',label:'IELTS Full Exam',date:'May 2026',exam:true},
+     {id:'sd_b1',label:'German B1 achieved',date:'Aug 2026',exam:false},
+     {id:'sd_b2',label:'German B2 certificate',date:'Dec 2026',exam:false},
+     {id:'sd_aps',label:'APS applied',date:'Sep 2026',exam:false},
+     {id:'sd_aps2',label:'APS certificate',date:'Dec 2026',exam:false},
+     {id:'sd_appl',label:'Studienkolleg applied',date:'Jan 2027',exam:false},
+     {id:'sd_visa',label:'Visa approved',date:'Mar 2027',exam:false},
+   ],
+   resources:[
+     {id:'sr_menschen',name:'Menschen A1/A2',icon:'📘',type:'book',note:'Standard Goethe textbook series',priority:true},
+     {id:'sr_grammatik',name:'Grammatik Aktiv',icon:'📗',type:'book',note:'Grammar practice A1–B1',priority:true},
+     {id:'sr_anki',name:'Anki',icon:'🃏',type:'app',note:'Spaced repetition flashcard system',priority:true},
+     {id:'sr_dw',name:'DW Learn German',icon:'🌐',type:'video',note:'Free official A1–B2 courses',priority:true},
+     {id:'sr_marija',name:'Deutsch mit Marija',icon:'▶️',type:'video',note:'Clear A1/A2 lessons in English',priority:false},
+     {id:'sr_anja',name:'Learn German w/ Anja',icon:'▶️',type:'video',note:'Native speaker + pronunciation',priority:false},
+     {id:'sr_duolingo',name:'Duolingo',icon:'🦉',type:'app',note:'Daily warm-up habit',priority:false},
+     {id:'sr_goethe',name:'Goethe-Institut',icon:'🏛',type:'web',note:'Official mock tests + exam prep',priority:true},
+   ],
+   tasks:[
+     {id:'st_switch',label:'Switch to Germany Prep Mode after IELTS',tag:'critical'},
+     {id:'st_hsc',label:'Certify HSC marksheet — German translation',tag:'document'},
+     {id:'st_aps',label:'Apply for APS certificate (mandatory for Indians)',tag:'critical'},
+     {id:'st_aps2',label:'APS interview prep — answer HSC questions in German',tag:'critical'},
+     {id:'st_b1',label:'Reach German B1 — prerequisite for applications',tag:'german'},
+     {id:'st_b2',label:'Reach German B2 / Goethe B2 certificate',tag:'critical'},
+     {id:'st_math',label:'Revise HSC Maths — Calculus, Vectors, Trigonometry',tag:'academic'},
+     {id:'st_phys',label:'Revise HSC Physics — Mechanics, Waves, Optics',tag:'academic'},
+     {id:'st_chem',label:'Revise basic Chemistry — T-Kurs semester 1',tag:'academic'},
+     {id:'st_pass',label:'Get passport (10-year validity)',tag:'document'},
+     {id:'st_fin',label:'Plan Sperrkonto — €11,904 for student visa',tag:'finance'},
+   ]
+  },
+  {id:'ph2',num:'02',label:'Application to Studienkolleg',timeline:'10–12 months before intake',
+   info:'Most Studienkolleg have two intakes: April and October. Apply 6–9 months early. Some require Aufnahmeprüfung in Maths and German.',
+   studienkolleg:['STK TU München','STK Heidelberg','STK RWTH Aachen','STK Hamburg','STK Göttingen','STK TU Berlin','STK Stuttgart','STK Hessen'],
+   universities:['LMU München — Physics & Astrophysics','Universität Heidelberg — Astronomy','Universität Göttingen — Astrophysics','Universität Bonn — Astrophysics','TU München — Physics','Universität Jena — Astrophysics'],
+   tasks:[
+     {id:'sa_list',label:'Shortlist 5–8 T-Kurs Studienkolleg',tag:'research'},
+     {id:'sa_doc',label:'Prepare full docs: APS, marksheet, German cert, CV',tag:'document'},
+     {id:'sa_mot',label:'Write Motivationsschreiben in German',tag:'writing'},
+     {id:'sa_apply',label:'Submit applications to all shortlisted Studienkolleg',tag:'action'},
+     {id:'sa_aufn',label:'Prepare for Aufnahmeprüfung — Maths + German',tag:'exam'},
+     {id:'sa_acc',label:'Receive Zulassungsbescheid (acceptance letter)',tag:'milestone'},
+   ]
+  },
+  {id:'ph3',num:'03',label:'Visa + Arrival in Germany',timeline:'3–6 months before intake',
+   info:'Open Sperrkonto early — it takes weeks. Anmeldung within 14 days of arrival is legally required.',
+   tasks:[
+     {id:'sv_block',label:'Open Sperrkonto — Expatrio / Fintiba (€11,904)',tag:'critical'},
+     {id:'sv_health',label:'Get German health insurance — TK or AOK student plan',tag:'document'},
+     {id:'sv_visa',label:'Apply for student visa at German consulate',tag:'critical'},
+     {id:'sv_flight',label:'Book flight — arrive 2 weeks before Studienkolleg starts',tag:'logistics'},
+     {id:'sv_accom',label:'Arrange accommodation — Studentenwohnheim or WG',tag:'logistics'},
+     {id:'sv_arr',label:'Arrive in Germany',tag:'milestone'},
+     {id:'sv_anm',label:'Anmeldung — register address within 14 days',tag:'critical'},
+     {id:'sv_enr',label:'Enrol at Studienkolleg, get student ID',tag:'action'},
+     {id:'sv_bank',label:'Open German bank account — Deutsche Bank or N26',tag:'finance'},
+   ]
+  },
+  {id:'ph4',num:'04',label:'T-Kurs Year at Studienkolleg',timeline:'1 year · 2 semesters · 30–35 hrs/week',
+   info:'T-Kurs is intense — classes in German, internal exams every semester, strict attendance. Your HSC Physics and Maths background is your biggest advantage.',
+   subjects:[
+     {name:'Mathematik',topics:'Calculus, linear algebra, complex numbers, differential equations'},
+     {name:'Physik',topics:'Mechanics, electromagnetism, optics, thermodynamics, modern physics'},
+     {name:'Chemie',topics:'Inorganic chemistry, atomic structure, periodic table, reactions'},
+     {name:'Deutsch',topics:'Academic writing, reading comprehension, grammar, presentation'},
+     {name:'Informatik',topics:'Programming basics / technical English'},
+   ],
+   resources:[
+     {id:'sk_ncert_m',name:'NCERT Maths Class 11 & 12',icon:'📘',type:'book',note:'Your base — review before T-Kurs',priority:true},
+     {id:'sk_hcv',name:'H.C. Verma — Concepts of Physics',icon:'📗',type:'book',note:'Deep physics understanding',priority:true},
+     {id:'sk_3b1b',name:'3Blue1Brown (YouTube)',icon:'▶️',type:'video',note:'Visual calculus + linear algebra',priority:true},
+     {id:'sk_mit',name:'MIT OCW — Physics',icon:'🎓',type:'video',note:'Free MIT lectures — T-Kurs level',priority:true},
+     {id:'sk_rd',name:'RD Sharma Mathematics',icon:'📗',type:'book',note:'Problem solving speed',priority:false},
+     {id:'sk_ncert_c',name:'NCERT Chemistry 11 & 12',icon:'📘',type:'book',note:'Chemie base — atomic + inorganic',priority:true},
+     {id:'sk_khan_c',name:'Khan Academy Chemistry',icon:'▶️',type:'video',note:'Clear visual chemistry lessons',priority:false},
+     {id:'sk_de_wiss',name:'Wissenschaftsdeutsch',icon:'📙',type:'book',note:'Academic German for science',priority:true},
+     {id:'sk_wolfram',name:'Wolfram Alpha',icon:'🔢',type:'web',note:'Verify Maths + Physics solutions',priority:false},
+     {id:'sk_fsp',name:'FSP Past Papers',icon:'📝',type:'web',note:'Request from Studienkolleg admin',priority:true},
+   ],
+   tasks:[
+     {id:'sk_att',label:'Attend all classes — absences can lead to removal',tag:'critical'},
+     {id:'sk_m1',label:'Pass Mathematik semester 1 internal exam',tag:'exam'},
+     {id:'sk_p1',label:'Pass Physik semester 1 internal exam',tag:'exam'},
+     {id:'sk_c1',label:'Pass Chemie semester 1 internal exam',tag:'exam'},
+     {id:'sk_d1',label:'Pass Deutsch semester 1 internal exam',tag:'exam'},
+     {id:'sk_m2',label:'Pass Mathematik semester 2 internal exam',tag:'exam'},
+     {id:'sk_p2',label:'Pass Physik semester 2 internal exam',tag:'exam'},
+     {id:'sk_c2',label:'Pass Chemie semester 2 internal exam',tag:'exam'},
+     {id:'sk_d2',label:'Pass Deutsch semester 2 internal exam',tag:'exam'},
+   ]
+  },
+  {id:'ph5',num:'05',label:'Feststellungsprüfung (FSP)',timeline:'End of Studienkolleg year',
+   warn:'FSP = one attempt per year, one repeat maximum. If you fail twice, your Germany plan ends here. Treat it like the most important exam of your life.',
+   tasks:[
+     {id:'sf_reg',label:'Register for FSP — submit form to administration',tag:'action'},
+     {id:'sf_math',label:'FSP Maths prep — past papers, formula sheets, time',tag:'exam'},
+     {id:'sf_phys',label:'FSP Physik prep — derivations, numericals',tag:'exam'},
+     {id:'sf_chem',label:'FSP Chemie prep — reactions, stoichiometry',tag:'exam'},
+     {id:'sf_de',label:'FSP Deutsch prep — Erörterung structure',tag:'exam'},
+     {id:'sf_mock',label:'Complete 3 full FSP mock exams timed',tag:'exam'},
+     {id:'sf_pass',label:'PASS the FSP — Zeugnis received',tag:'milestone'},
+     {id:'sf_app',label:'Apply to B.Sc. Physics & Astronomy programs',tag:'action'},
+   ]
+  }
+];
+
+function stkAllTasks(){return STK_PHASES.reduce(function(a,p){return a.concat(p.tasks||[]);},[])}
+function stkPhDone(ph){return(ph.tasks||[]).filter(function(t){return !!state['stk_'+t.id]}).length;}
+function stkPhTotal(ph){return(ph.tasks||[]).length;}
+function stkPhPct(ph){var t=stkPhTotal(ph);return t?Math.round(stkPhDone(ph)/t*100):0;}
+function stkTogglePhase(id){STK_OPEN=STK_OPEN===id?null:id;renderSTK();}
+function stkToggleTask(id){state['stk_'+id]=!state['stk_'+id];save();renderSTK();renderMetrics();}
+function stkToggleDl(id){state['stkdl_'+id]=!state['stkdl_'+id];save();renderSTK();}
+function stkCycleRes(id){var cur=state['stkrs_'+id]||'none';state['stkrs_'+id]=cur==='none'?'using':cur==='using'?'done':'none';save();renderSTK();}
+
+function renderSTK(){
+  var done=stkAllTasks().filter(function(t){return !!state['stk_'+t.id]}).length;
+  var total=stkAllTasks().length,pct=total?Math.round(done/total*100):0;
+  var curIdx=0;STK_PHASES.forEach(function(p,i){if(stkPhDone(p)>0)curIdx=i;});
+  var svg9='<svg width="9" height="9" viewBox="0 0 9 9" fill="none"><polyline points="1.5,4.5 3.5,7 7.5,1.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var h='';
+  h+='<div class="stk-header"><div class="stk-title">🇩🇪 Studienkolleg T-Kurs</div><div class="stk-sub">B.Sc. Physics &amp; Astronomy · Feststellungsprüfung</div></div>';
+  h+='<div class="stk-war"><span>🎯</span><span><strong>IELTS WAR MODE — Active</strong><br>Speaking (6 May) + Exam (7 May). Germany prep resumes after.<br><strong>No new learning. Only practice + performance.</strong></span></div>';
+  h+='<div class="stk-summary">';
+  h+='<div class="stk-sum-card"><div class="stk-sum-label">Phase</div><div class="stk-sum-val">'+(curIdx+1)+'/5</div></div>';
+  h+='<div class="stk-sum-card"><div class="stk-sum-label">Tasks</div><div class="stk-sum-val">'+done+'/'+total+'</div></div>';
+  h+='<div class="stk-sum-card"><div class="stk-sum-label">Overall</div><div class="stk-sum-val">'+pct+'%</div></div>';
+  h+='</div>';
+  h+='<div class="stk-ob"><div class="stk-ob-labels"><span>India — Now</span><span>'+pct+'%</span><span>FSP Passed</span></div>';
+  h+='<div class="stk-ob-track"><div class="stk-ob-fill" style="width:'+pct+'%"></div></div></div>';
+  STK_PHASES.forEach(function(ph,idx){
+    var pc=PHASE_COLORS[idx],phPct=stkPhPct(ph),isOpen=STK_OPEN===ph.id,isC=phPct===100;
+    h+='<div class="stk-phase'+(isOpen?' open':'')+'" style="--phase-color:'+pc.color+';--phase-glow:'+pc.glow+';">';
+    h+='<div class="stk-ph-head" onclick="stkTogglePhase(\''+ph.id+'\')">';
+    h+='<div class="stk-ph-num'+(isC?' done':'')+'">'+ph.num+'</div>';
+    h+='<div class="stk-ph-meta"><div class="stk-ph-title">'+ph.label+'</div><div class="stk-ph-time">'+ph.timeline+'</div></div>';
+    h+='<div class="stk-ph-right"><div class="stk-bar-wrap"><div class="stk-bar-track"><div class="stk-bar-fill" style="width:'+phPct+'%"></div></div></div>';
+    h+='<span class="stk-pct">'+phPct+'%</span><span class="stk-chev'+(isOpen?' open':'')+'">▾</span></div>';
+    h+='</div>';
+    h+='<div class="stk-body'+(isOpen?' open':'')+'">';
+    h+='<div class="stk-divider"></div>';
+    h+='<div class="stk-info">'+ph.info+'</div>';
+    if(ph.deadlines){
+      h+='<div class="stk-sec">Deadlines</div><div class="stk-dl-list">';
+      ph.deadlines.forEach(function(dl){
+        var d2=!!state['stkdl_'+dl.id];
+        h+='<div class="stk-dl'+(d2?' hit':'')+'" onclick="stkToggleDl(\''+dl.id+'\')">';
+        h+='<div class="stk-dl-chk'+(d2?' done':'')+'">'+svg9+'</div>';
+        h+='<span class="stk-dl-lbl'+(d2?' done':'')+'">'+dl.label+'</span>';
+        h+='<span class="stk-dl-date'+(dl.exam?' exam-tag':'')+'">'+dl.date+'</span>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    if(ph.resources){
+      h+='<div class="stk-sec">Resources</div><div class="stk-res-list">';
+      ph.resources.forEach(function(r){
+        var rst=state['stkrs_'+r.id]||'none';
+        h+='<div class="stk-res'+(rst==='using'?' using':rst==='done'?' done-r':'')+'" onclick="stkCycleRes(\''+r.id+'\')">';
+        h+='<div class="stk-res-icon">'+r.icon+'</div>';
+        h+='<div class="stk-res-body"><div class="stk-res-name">'+(r.priority?'★ ':'')+r.name+'</div><div class="stk-res-note">'+r.note+'</div></div>';
+        h+='<div class="stk-res-right"><span class="stk-res-type">'+r.type+'</span><span class="stk-res-st '+rst+'">'+(rst==='none'?'add':rst==='using'?'using':'done')+'</span></div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    if(ph.studienkolleg){
+      h+='<div class="stk-sec">Top T-Kurs Studienkolleg</div><div class="stk-chips">';
+      ph.studienkolleg.forEach(function(s){h+='<span class="stk-chip gold">'+s+'</span>';});
+      h+='</div>';
+    }
+    if(ph.universities){
+      h+='<div class="stk-sec">Target Universities — B.Sc. Physics & Astronomy</div><div class="stk-chips">';
+      ph.universities.forEach(function(s){h+='<span class="stk-chip">'+s+'</span>';});
+      h+='</div>';
+    }
+    if(ph.subjects){
+      h+='<div class="stk-sec">T-Kurs Subjects</div><div class="stk-subj-grid">';
+      ph.subjects.forEach(function(s){h+='<div class="stk-subj"><div class="stk-subj-name">'+s.name+'</div><div class="stk-subj-topics">'+s.topics+'</div></div>';});
+      h+='</div>';
+    }
+    if(ph.warn)h+='<div class="stk-warn"><span>⚠</span><span>'+ph.warn+'</span></div>';
+    if(ph.tasks&&ph.tasks.length){
+      h+='<div class="stk-sec">Checklist</div><div class="stk-tasks">';
+      ph.tasks.forEach(function(t){
+        var td=!!state['stk_'+t.id];
+        var tc=t.tag==='critical'?'critical':t.tag==='milestone'?'milestone':t.tag==='exam'?'exam':'';
+        h+='<div class="stk-task" onclick="stkToggleTask(\''+t.id+'\')">';
+        h+='<div class="stk-chk'+(td?' done':'')+'">'+svg9+'</div>';
+        h+='<span class="stk-lbl'+(td?' done':'')+'">'+t.label+'</span>';
+        h+='<span class="stk-tag '+tc+'">'+t.tag+'</span>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    h+='</div></div>';
+  });
+  document.getElementById('stkContent').innerHTML=h;
+}
+
+load();
+var today=new Date().getDay();
+currentDay=today===0?6:today-1;
+render();
+</script>
+</body>
+</html>
